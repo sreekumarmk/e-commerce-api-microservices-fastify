@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import Redis from 'ioredis';
 import cors from '@fastify/cors';
+import axios from 'axios';
 
 const app = Fastify({ logger: true });
 app.register(cors, {
@@ -20,12 +21,24 @@ app.post('/add', async (req, reply) => {
 app.get('/:userId', async (req, res) => {
   const data = await redis.hgetall(`cart:${req.params.userId}`);
 
-  const items = Object.entries(data).map(([productId, quantity]) => ({
-    productId,
-    quantity: Number(quantity),
-  }));
+  const items = await Promise.all(
+    Object.entries(data).map(async ([productId, quantity]) => {
+      let productDetails = {};
+      try {
+        const productRes = await axios.get(`${process.env.PRODUCT_SERVICE_URL || 'http://product-service:3002'}/${productId}`);
+        productDetails = productRes.data;
+      } catch (err) {
+        req.log.error(`Failed to fetch product ${productId}: ${err.message}`);
+      }
+      return {
+        productId,
+        quantity: Number(quantity),
+        ...productDetails
+      };
+    })
+  );
 
-  const subtotal = 0; // calculate later using prices if needed
+  const subtotal = items.reduce((acc, item) => acc + (item.price || 0) * item.quantity, 0);
 
   return {
     items,
@@ -35,6 +48,15 @@ app.get('/:userId', async (req, res) => {
 
 app.delete('/:userId/:productId', async (req) => {
   await redis.hdel(`cart:${req.params.userId}`, req.params.productId);
+  return { ok: true };
+});
+
+app.post('/delete', async (req, reply) => {
+  const { userId, productId } = req.body;
+  if (!userId || !productId) {
+    return reply.code(400).send({ error: 'userId and productId are required' });
+  }
+  await redis.hdel(`cart:${userId}`, productId);
   return { ok: true };
 });
 

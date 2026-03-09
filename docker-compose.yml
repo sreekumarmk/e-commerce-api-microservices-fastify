@@ -74,10 +74,12 @@ services:
     build: ./cart-service
     environment:
       REDIS_URL: "redis://redis:6379"
+      PRODUCT_SERVICE_URL: "http://product-service:3002"
     ports:
       - "3004:3004"
     depends_on:
       - redis
+      - product-service
 
   worker:
     build: ./worker
