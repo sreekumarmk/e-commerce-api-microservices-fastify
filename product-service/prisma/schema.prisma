@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Product {
+  id        String   @id @default(uuid())
+  title     String
+  image     String?
+  category  String
+  price     Int
+  popularity Int
+  stock     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model WebhookSubscription {
+  id        String   @id @default(uuid())
+  service   String
+  url       String
+  createdAt DateTime @default(now())
+}

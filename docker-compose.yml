@@ -1,0 +1,91 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: msuser
+      POSTGRES_PASSWORD: mspass
+      POSTGRES_DB: msdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      AUTH_URL: http://auth-service:3001
+      PRODUCT_URL: http://product-service:3002
+      ORDER_URL: http://order-service:3003
+      CART_URL: http://cart-service:3004
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+      - cart-service
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      DATABASE_URL: "postgresql://msuser:mspass@postgres:5432/msdb?schema=auth"
+      JWT_SECRET: "change_this_secret"
+      REFRESH_SECRET: "change_refresh_secret"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    command: sh -c "npx prisma db push --force-reset && node prisma/seed.js && node src/index.js"
+    
+
+  product-service:
+    build: ./product-service
+    environment:
+      DATABASE_URL: "postgresql://msuser:mspass@postgres:5432/msdb?schema=product"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - redis
+    command: sh -c "npx prisma db push --force-reset && node prisma/seed.js && node src/index.js"
+
+  order-service:
+    build: ./order-service
+    environment:
+      DATABASE_URL: "postgresql://msuser:mspass@postgres:5432/msdb?schema=order"
+      PRODUCT_SERVICE_URL: "http://product-service:3002"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres
+      - product-service
+      - redis
+    command: sh -c "npx prisma db push --force-reset && node prisma/seed.js && node src/index.js"
+
+  cart-service:
+    build: ./cart-service
+    environment:
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "3004:3004"
+    depends_on:
+      - redis
+
+  worker:
+    build: ./worker
+    environment:
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - redis
+      - product-service
+
+volumes:
+  pgdata:

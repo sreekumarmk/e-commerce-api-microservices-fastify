@@ -1,0 +1,155 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+async function main(){
+  await prisma.product.createMany({
+    data:[
+    {
+      "title": "Luxury Dress",
+      "image": "product image 1.jpg",
+      "category": "special-edition",
+      "price": 3500,
+      "popularity": 5,
+      "stock": 10
+    },
+    {
+      "title": "Luxury Black Clothing",
+      "image": "product image 2.jpg",
+      "category": "luxury-collection",
+      "price": 1050,
+      "popularity": 4,
+      "stock": 20
+    },
+    {
+      "title": "Luxury Blue Dress",
+      "image": "product image 3.jpg",
+      "category": "summer-edition",
+      "price": 5000,
+      "popularity": 3,
+      "stock": 5
+    },
+    {
+      "title": "Special Brown Dress",
+      "image": "product image 4.jpg",
+      "category": "unique-collection",
+      "price": 2500,
+      "popularity": 2,
+      "stock": 15
+    },
+    {
+      "title": "Special Luxury Dress",
+      "image": "product image 5.jpg",
+      "category": "unique-collection",
+      "price": 5200,
+      "popularity": 1,
+      "stock": 0
+    },
+    {
+      "title": "Super Luxury Dress",
+      "image": "product image 6.jpg",
+      "category": "luxury-collection",
+      "price": 8500,
+      "popularity": 20,
+      "stock": 20
+    },
+    {
+      "title": "Luxury Brown Dress",
+      "image": "product image 7.jpg",
+      "category": "luxury-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Premium Brown Dress",
+      "image": "product image 8.jpg",
+      "category": "unique-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Luxury White Dress",
+      "image": "product image 9.jpg",
+      "category": "luxury-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Brown Limited Collection",
+      "image": "product image 10.jpg",
+      "category": "unique-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Golden Premium T-shirt",
+      "image": "product image 11.jpg",
+      "category": "luxury-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Golden T-shirt",
+      "image": "product image 12.jpg",
+      "category": "summer-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "White Premium T-shirt",
+      "image": "product image 13.jpg",
+      "category": "special-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Brown Premium T-shirt",
+      "image": "product image 14.jpg",
+      "category": "special-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Brown Special Clothing",
+      "image": "product image 15.jpg",
+      "category": "special-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "White Special Clothing",
+      "image": "product image 16.jpg",
+      "category": "special-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Dark Special Clothing",
+      "image": "product image 17.jpg",
+      "category": "special-edition",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    },
+    {
+      "title": "Brown Premium Clothing",
+      "image": "product image 18.jpg",
+      "category": "unique-collection",
+      "price": 4500,
+      "popularity": 5,
+      "stock": 500
+    }
+  ],
+    skipDuplicates: true
+  });
+  console.error('seeded products');
+}
+main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>prisma.$disconnect());
