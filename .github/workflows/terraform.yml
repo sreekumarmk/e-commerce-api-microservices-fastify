@@ -21,6 +21,7 @@ on:
         options:
           - plan
           - apply
+          - destroy
 
 jobs:
   terraform:
@@ -65,4 +66,9 @@ jobs:
       - name: Terraform Apply
         if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform apply -auto-approve
+        working-directory: terraform
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
         working-directory: terraform

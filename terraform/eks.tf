@@ -91,7 +91,7 @@ resource "aws_eks_node_group" "main" {
 
   # Cost Optimization: Spot Instances
   capacity_type  = "SPOT"
-  instance_types = ["t3.medium", "t3a.medium"]
+  instance_types = ["t3.micro"]
 
   update_config {
     max_unavailable = 1
