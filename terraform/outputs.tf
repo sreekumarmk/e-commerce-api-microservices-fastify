@@ -18,6 +18,11 @@ output "rds_username" {
   value       = aws_db_instance.main.username
 }
 
+output "ecr_repository_urls" {
+  description = "ECR Repository URLs"
+  value       = { for k, v in aws_ecr_repository.services : k => v.repository_url }
+}
+
 output "region" {
   description = "AWS Region"
   value       = var.region

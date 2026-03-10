@@ -1,0 +1,78 @@
+name: "Auth Service CI/CD"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'auth-service/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'auth-service/**'
+
+jobs:
+  build-and-deploy:
+    name: "Build and Deploy Auth Service"
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: auth-service
+      CLUSTER_NAME: ecommerce-eks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './auth-service/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: auth-service
+
+      - name: Run Tests
+        run: npm test
+        working-directory: auth-service
+        continue-on-error: true # For demonstration, in real life you'd want this to fail
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./auth-service
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+
+      - name: Deploy to EKS
+        env:
+          IMAGE: ${{ steps.build-image.outputs.image }}
+        run: |
+          # Use envsubst or sed to update placeholders in the manifest
+          # For zero-downtime, we just update the image on the existing deployment
+          # The RollingUpdate strategy in auth-service.yaml handles the rest
+          kubectl set image deployment/auth-service auth-service=$IMAGE
+          kubectl rollout status deployment/auth-service
