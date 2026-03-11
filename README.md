@@ -69,3 +69,56 @@ kubectl get svc
 ## Cost Estimation
 - **Monthly**: Approx. $130 - $150 (depending on traffic and NAT usage).
 - **Testing (8 hours)**: Approx. **$1.60 - $2.00**.
+
+## API Endpoints
+
+All external API requests are routed through the `api-gateway` service. The gateway directs traffic to the underlying microservices using URL prefixes.
+
+### Accessing Endpoints in AWS EKS
+
+When deployed to EKS, the `api-gateway` is exposed as a Kubernetes `LoadBalancer` service. You can find the external DNS name (Base URL) to use for your API requests by running:
+
+```bash
+# Get the External IP/DNS of the API Gateway LoadBalancer
+kubectl get svc api-gateway
+# OR specifically extract the hostname:
+export API_BASE_URL="http://$(kubectl get svc api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+```
+
+You can then use this `$API_BASE_URL` (e.g., `http://ad123...elb.us-east-1.amazonaws.com`) to make requests.
+
+### Authentication
+
+Most endpoints require a JWT token passed in the `Authorization` header:
+`Authorization: Bearer <your_access_token>`
+
+### 1. Auth Service (`/auth`)
+
+*   `POST /auth/signup`: Create a new user (`email`, `password`, `firstName`, `lastName`).
+*   `POST /auth/login`: Login to receive `access` and `refresh` tokens.
+*   `GET /auth/users`: List all users.
+*   `GET /auth/user?id=...`: Get user by ID.
+*   `GET /auth/profile?email=...`: Get user by email.
+*   `POST /auth/token`: Refresh an access token using a `refresh` token.
+
+### 2. Product Service (`/products`) - *Publicly Accessible*
+
+*   `GET /products/list`: List all products.
+*   `GET /products/:id`: Get product details.
+*   `POST /products/create`: Create a product.
+*   `PATCH /products/update/:id`: Update a product.
+*   `POST /products/reserve`: Reserve stock.
+
+### 3. Order Service (`/orders`) - *Requires Authentication*
+
+*   `POST /orders/create`: Create an order (`user`, `products` array).
+*   `GET /orders/list`: List all orders.
+*   `GET /orders/me`: List orders for the authenticated user.
+*   `GET /orders/:id`: Get order details.
+
+### 4. Cart Service (`/cart`) - *Requires Authentication*
+
+*   `POST /cart/add`: Add an item to the cart (`userId`, `productId`, `qty`).
+*   `GET /cart/:userId`: Get cart items and subtotal.
+*   `DELETE /cart/:userId/:productId`: Remove a specific item from the cart.
+*   `POST /cart/delete`: Alternative to remove an item (`userId`, `productId`).
