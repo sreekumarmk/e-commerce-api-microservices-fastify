@@ -2,15 +2,11 @@ name: "Auth Service CI/CD"
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'auth-service/**'
+    branches: [ main ]
+    paths: [ 'auth-service/**' ]
   pull_request:
-    branches:
-      - main
-    paths:
-      - 'auth-service/**'
+    branches: [ main ]
+    paths: [ 'auth-service/**' ]
   workflow_dispatch:
 
 jobs:
