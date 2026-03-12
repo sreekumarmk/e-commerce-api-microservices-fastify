@@ -77,23 +77,34 @@ resource "aws_eks_cluster" "main" {
   depends_on = [aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy]
 }
 
-# Launch Template: sets --max-pods=110 so kubelet honours the raised prefix-delegation limit.
-# Required because EKS managed node groups do not propagate ENABLE_PREFIX_DELEGATION
-# to the Kubelet max-pods value automatically — you must pass it via bootstrap UserData.
+# ---------------------------------------------------------------------------
+# Launch Template: passes --max-pods=110 to the EKS AL2 bootstrap script so
+# that Kubelet honours the higher pod limit enabled by VPC CNI prefix delegation.
+#
+# EKS managed node groups REQUIRE UserData in MIME multipart format.
+# A bare shell script is rejected with:
+#   Ec2LaunchTemplateInvalidConfiguration: User data was not in the MIME
+#   multipart format.
+# ---------------------------------------------------------------------------
 resource "aws_launch_template" "nodes" {
   name_prefix   = "${var.cluster_name}-node-lt-"
   instance_type = "t3.micro"
 
-  # EKS-optimised AL2 bootstrap override: raise Kubelet max-pods to match
-  # the prefix-delegation capacity (t3.micro: 1 ENI × 16 IPs/prefix × 1 prefix = 16,
-  # but AWS uses 110 as the safe ceiling for prefix delegation on micro instances).
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    set -ex
-    /etc/eks/bootstrap.sh ${var.cluster_name} \\
-      --kubelet-extra-args '--max-pods=110'
-  EOF
-  )
+  # join() builds the MIME payload as a plain string so there are no
+  # heredoc indentation or special-character escaping issues.
+  user_data = base64encode(join("\n", [
+    "MIME-Version: 1.0",
+    "Content-Type: multipart/mixed; boundary=\"==EKSBOOTSTRAP==\"",
+    "",
+    "--==EKSBOOTSTRAP==",
+    "Content-Type: text/x-shellscript; charset=\"us-ascii\"",
+    "",
+    "#!/bin/bash",
+    "set -ex",
+    "/etc/eks/bootstrap.sh ${var.cluster_name} --kubelet-extra-args '--max-pods=110'",
+    "",
+    "--==EKSBOOTSTRAP==--",
+  ]))
 
   tag_specifications {
     resource_type = "instance"
