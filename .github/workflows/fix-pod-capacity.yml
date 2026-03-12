@@ -1,0 +1,108 @@
+name: "Fix: Expand Pod Capacity (VPC CNI Prefix Delegation)"
+
+# Run this ONCE manually from Actions → fix-pod-capacity → Run workflow.
+# It has two sequential jobs:
+#   1. enable-prefix-delegation  → patches aws-node DaemonSet via kubectl
+#   2. recycle-node              → terraform taint + apply to force node replacement
+# After it completes the t3.micro node will report 110 allocatable pods instead of 4.
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION:    ${{ secrets.AWS_REGION }}
+  CLUSTER_NAME:  ecommerce-eks
+  TF_STATE_BUCKET: ecommerce-terraform-state-505833152145
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Enable VPC CNI prefix delegation on the existing node
+  # ─────────────────────────────────────────────────────────────────────────────
+  enable-prefix-delegation:
+    name: "Enable VPC CNI Prefix Delegation"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+
+      - name: Enable prefix delegation on aws-node DaemonSet
+        run: |
+          kubectl set env daemonset aws-node \
+            -n kube-system \
+            ENABLE_PREFIX_DELEGATION=true
+          echo "✅ ENABLE_PREFIX_DELEGATION=true set on aws-node"
+
+      - name: Verify env var is set
+        run: |
+          kubectl get daemonset aws-node -n kube-system \
+            -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="ENABLE_PREFIX_DELEGATION")].value}'
+          echo ""   # newline after jsonpath output
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Force-recycle the node group so the new Launch Template takes effect
+  #         (new nodes will boot with --max-pods=110 in their Kubelet config)
+  # ─────────────────────────────────────────────────────────────────────────────
+  recycle-node:
+    name: "Recycle Node via Terraform"
+    runs-on: ubuntu-latest
+    needs: enable-prefix-delegation   # run only after Job 1 succeeds
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Taint node group (force replacement)
+        run: terraform taint aws_eks_node_group.main
+        working-directory: terraform
+
+      - name: Terraform Apply (replace node group)
+        run: terraform apply -auto-approve
+        working-directory: terraform
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+
+      - name: Wait for new node to become Ready
+        run: |
+          echo "Waiting for node to be Ready..."
+          kubectl wait --for=condition=Ready node --all --timeout=300s
+
+      - name: Show updated pod capacity
+        run: |
+          NODE=$(kubectl get node -o jsonpath='{.items[0].metadata.name}')
+          PODS=$(kubectl get node "$NODE" -o jsonpath='{.status.allocatable.pods}')
+          echo "Node: $NODE"
+          echo "Allocatable pods: $PODS"
+          if [ "$PODS" -ge 34 ]; then
+            echo "✅ Pod capacity is now $PODS — prefix delegation active"
+          else
+            echo "⚠️  Pod capacity is $PODS — expected >= 34. Check kubelet logs."
+            exit 1
+          fi
+
+      - name: Show all running pods
+        run: kubectl get pods -A

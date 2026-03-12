@@ -77,6 +77,32 @@ resource "aws_eks_cluster" "main" {
   depends_on = [aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy]
 }
 
+# Launch Template: sets --max-pods=110 so kubelet honours the raised prefix-delegation limit.
+# Required because EKS managed node groups do not propagate ENABLE_PREFIX_DELEGATION
+# to the Kubelet max-pods value automatically — you must pass it via bootstrap UserData.
+resource "aws_launch_template" "nodes" {
+  name_prefix   = "${var.cluster_name}-node-lt-"
+  instance_type = "t3.micro"
+
+  # EKS-optimised AL2 bootstrap override: raise Kubelet max-pods to match
+  # the prefix-delegation capacity (t3.micro: 1 ENI × 16 IPs/prefix × 1 prefix = 16,
+  # but AWS uses 110 as the safe ceiling for prefix delegation on micro instances).
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    set -ex
+    /etc/eks/bootstrap.sh ${var.cluster_name} \\
+      --kubelet-extra-args '--max-pods=110'
+  EOF
+  )
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.cluster_name}-node"
+    }
+  }
+}
+
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.cluster_name}-node-group"
@@ -90,8 +116,14 @@ resource "aws_eks_node_group" "main" {
   }
 
   # Cost Optimization: Spot Instances
-  capacity_type  = "SPOT"
-  instance_types = ["t3.micro"]
+  capacity_type = "SPOT"
+
+  # instance_types is set inside the launch template (cannot be specified here
+  # when a launch_template block is present).
+  launch_template {
+    id      = aws_launch_template.nodes.id
+    version = aws_launch_template.nodes.latest_version
+  }
 
   update_config {
     max_unavailable = 1
