@@ -77,6 +77,8 @@ app.post('/webhooks/register', async (req) => {
   return prisma.webhookSubscription.create({ data: { service, url }});
 });
 
+app.get('/health', async () => ({ status: 'ok' }));
+
 const start = async () => {
   await prisma.$connect();
   await app.listen({ port: process.env.PORT || 3002, host: '0.0.0.0' });

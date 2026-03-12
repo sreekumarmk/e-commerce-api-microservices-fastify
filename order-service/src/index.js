@@ -30,7 +30,8 @@ app.addHook('onRequest', async (req, reply) => {
   if (
     req.raw.url.startsWith('/auth/signup') ||
     req.raw.url.startsWith('/auth/login') ||
-    req.raw.url.startsWith('/products')
+    req.raw.url.startsWith('/products') ||
+    req.raw.url.startsWith('/health')
   ) return;
 
   // ✅ Normal JWT authentication
@@ -163,6 +164,8 @@ app.post('/webhooks/product', async (req) => {
   });
   return { ok: true };
 });
+
+app.get('/health', async () => ({ status: 'ok' }));
 
 const start = async () => {
   await prisma.$connect();

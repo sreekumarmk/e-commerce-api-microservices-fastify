@@ -60,6 +60,8 @@ app.post('/delete', async (req, reply) => {
   return { ok: true };
 });
 
+app.get('/health', async () => ({ status: 'ok' }));
+
 const start = async () => {
   await app.listen({ port: process.env.PORT || 3004, host: '0.0.0.0' });
   app.log.info('Cart service listening');

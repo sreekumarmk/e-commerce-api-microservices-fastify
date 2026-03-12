@@ -98,6 +98,8 @@ app.get('/verify', async (req, reply) => {
   }
 });
 
+app.get('/health', async () => ({ status: 'ok' }));
+
 const start = async () => {
   await prisma.$connect();
   await app.listen({ port: process.env.PORT || 3001, host: '0.0.0.0' });

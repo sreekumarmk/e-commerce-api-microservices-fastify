@@ -48,6 +48,8 @@ app.register(proxy, { prefix: '/products', upstream: process.env.PRODUCT_URL || 
 app.register(proxy, { prefix: '/orders', upstream: process.env.ORDER_URL || 'http://order-service:3003' });
 app.register(proxy, { prefix: '/cart', upstream: process.env.CART_URL || 'http://cart-service:3004' });
 
+app.get('/health', async () => ({ status: 'ok' }));
+
 const start = async () => {
   await app.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
   app.log.info('API Gateway listening');
