@@ -49,5 +49,12 @@ jobs:
         env:
           IMAGE: ${{ steps.build-image.outputs.image }}
         run: |
+          # Replace placeholder with the actual image
+          sed -i "s|<ECR_REPO_URL_WORKER>:latest|$IMAGE|g" k8s/worker.yaml
+          
+          # Apply manifest to ensure resources exist
+          kubectl apply -f k8s/worker.yaml
+          
+          # Explicitly set image and wait for rollout
           kubectl set image deployment/worker worker=$IMAGE
           kubectl rollout status deployment/worker

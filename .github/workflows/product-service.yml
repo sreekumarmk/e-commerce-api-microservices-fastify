@@ -49,5 +49,16 @@ jobs:
         env:
           IMAGE: ${{ steps.build-image.outputs.image }}
         run: |
+          # Fetch RDS endpoint dynamically based on tags
+          export RDS_ENDPOINT=$(aws rds describe-db-instances --query "DBInstances[?Tags[?Key=='Name' && Value=='${CLUSTER_NAME}-rds']].Endpoint.Address" --output text)
+          
+          # Replace placeholders in the manifest
+          sed -i "s|<ECR_REPO_URL_PRODUCT>:latest|$IMAGE|g" k8s/product-service.yaml
+          sed -i "s|<RDS_ENDPOINT>|$RDS_ENDPOINT|g" k8s/product-service.yaml
+          
+          # Apply manifest to ensure resources exist
+          kubectl apply -f k8s/product-service.yaml
+          
+          # Explicitly set image and wait for rollout
           kubectl set image deployment/product-service product-service=$IMAGE
           kubectl rollout status deployment/product-service

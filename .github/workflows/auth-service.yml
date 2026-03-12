@@ -68,8 +68,16 @@ jobs:
         env:
           IMAGE: ${{ steps.build-image.outputs.image }}
         run: |
-          # Use envsubst or sed to update placeholders in the manifest
-          # For zero-downtime, we just update the image on the existing deployment
-          # The RollingUpdate strategy in auth-service.yaml handles the rest
+          # Fetch RDS endpoint dynamically based on tags
+          export RDS_ENDPOINT=$(aws rds describe-db-instances --query "DBInstances[?Tags[?Key=='Name' && Value=='${CLUSTER_NAME}-rds']].Endpoint.Address" --output text)
+          
+          # Replace placeholders in the manifest
+          sed -i "s|<ECR_REPO_URL_AUTH>:latest|$IMAGE|g" k8s/auth-service.yaml
+          sed -i "s|<RDS_ENDPOINT>|$RDS_ENDPOINT|g" k8s/auth-service.yaml
+          
+          # Apply manifest to ensure resources exist
+          kubectl apply -f k8s/auth-service.yaml
+          
+          # Explicitly set image and wait for rollout
           kubectl set image deployment/auth-service auth-service=$IMAGE
           kubectl rollout status deployment/auth-service
