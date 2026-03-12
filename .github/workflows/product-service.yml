@@ -2,10 +2,10 @@ name: "Product Service CI/CD"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths: [ 'product-service/**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
     paths: [ 'product-service/**' ]
   workflow_dispatch:
 

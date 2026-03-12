@@ -2,7 +2,10 @@ name: "Order Service CI/CD"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
+    paths: [ 'order-service/**' ]
+  pull_request:
+    branches: [ master ]
     paths: [ 'order-service/**' ]
   workflow_dispatch:
 

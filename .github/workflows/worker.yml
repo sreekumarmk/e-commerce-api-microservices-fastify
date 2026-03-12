@@ -2,7 +2,10 @@ name: "Worker CI/CD"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
+    paths: [ 'worker/**' ]
+  pull_request:
+    branches: [ master ]
     paths: [ 'worker/**' ]
   workflow_dispatch:
 

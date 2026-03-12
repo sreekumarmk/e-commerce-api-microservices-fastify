@@ -2,10 +2,10 @@ name: "API Gateway CI/CD"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths: [ 'api-gateway/**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
     paths: [ 'api-gateway/**' ]
   workflow_dispatch:
 

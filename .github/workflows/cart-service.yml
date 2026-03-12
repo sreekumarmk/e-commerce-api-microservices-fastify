@@ -2,7 +2,10 @@ name: "Cart Service CI/CD"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
+    paths: [ 'cart-service/**' ]
+  pull_request:
+    branches: [ master ]
     paths: [ 'cart-service/**' ]
   workflow_dispatch:
 

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: product-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: product-service
@@ -28,7 +28,7 @@ spec:
         - name: DATABASE_URL
           value: "postgresql://msuser:mspassword123@<RDS_ENDPOINT>:5432/msdb?schema=product"
         - name: REDIS_URL
-          value: "redis://redis-cluster:6379"
+          value: "redis://redis:6379"
         readinessProbe:
           httpGet:
             path: /health
