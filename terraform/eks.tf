@@ -126,8 +126,8 @@ resource "aws_eks_node_group" "main" {
     min_size     = 1
   }
 
-  # Cost Optimization: Spot Instances
-  capacity_type = "SPOT"
+  # Free Tier: t3.micro On-Demand (750 hrs/month, 12 months) - more stable than SPOT
+  capacity_type = "ON_DEMAND"
 
   # instance_types is set inside the launch template (cannot be specified here
   # when a launch_template block is present).
